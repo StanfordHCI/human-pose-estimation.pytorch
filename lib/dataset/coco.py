@@ -8,6 +8,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import copy
 import logging
 import os
 import pickle
@@ -45,7 +46,11 @@ class COCODataset(JointsDataset):
         13: "left_knee",
         14: "right_knee",
         15: "left_ankle",
-        16: "right_ankle"
+        16: "right_ankle",
+        17: "left_toe", # 0 in foot
+        18: "left_heel", # 2 in foot
+        19: "right_toe", # 3 in foot
+        20: "right_heel", # 5 in foot
     },
 	"skeleton": [
         [16,14],[14,12],[17,15],[15,13],[12,13],[6,12],[7,13], [6,7],[6,8],
@@ -82,9 +87,10 @@ class COCODataset(JointsDataset):
         self.num_images = len(self.image_set_index)
         logger.info('=> num_images: {}'.format(self.num_images))
 
-        self.num_joints = 17
+        self.num_joints = 21
         self.flip_pairs = [[1, 2], [3, 4], [5, 6], [7, 8],
-                           [9, 10], [11, 12], [13, 14], [15, 16]]
+                           [9, 10], [11, 12], [13, 14], [15, 16], [17, 19], [18, 20]]
+        self.foot_point_map = {0: 17, 2: 18, 3: 19, 5: 20}
         self.parent_ids = None
 
         self.db = self._get_db()
@@ -96,7 +102,7 @@ class COCODataset(JointsDataset):
 
     def _get_ann_file_keypoint(self):
         """ self.root / annotations / person_keypoints_train2017.json """
-        prefix = 'person_keypoints' \
+        prefix = 'coco_wholebody' \
             if 'test' not in self.image_set else 'image_info'
         return os.path.join(self.root, 'annotations',
                             prefix + '_' + self.image_set + '.json')
@@ -166,11 +172,22 @@ class COCODataset(JointsDataset):
 
             joints_3d = np.zeros((self.num_joints, 3), dtype=np.float)
             joints_3d_vis = np.zeros((self.num_joints, 3), dtype=np.float)
-            for ipt in range(self.num_joints):
+            for ipt in range(self.num_joints - 4):
                 joints_3d[ipt, 0] = obj['keypoints'][ipt * 3 + 0]
                 joints_3d[ipt, 1] = obj['keypoints'][ipt * 3 + 1]
                 joints_3d[ipt, 2] = 0
                 t_vis = obj['keypoints'][ipt * 3 + 2]
+                if t_vis > 1:
+                    t_vis = 1
+                joints_3d_vis[ipt, 0] = t_vis
+                joints_3d_vis[ipt, 1] = t_vis
+                joints_3d_vis[ipt, 2] = 0
+
+            for fpt, ipt in self.foot_point_map.items():
+                joints_3d[ipt, 0] = obj['foot_kpts'][fpt * 3 + 0]
+                joints_3d[ipt, 1] = obj['foot_kpts'][fpt * 3 + 1]
+                joints_3d[ipt, 2] = 0
+                t_vis = obj['foot_kpts'][fpt * 3 + 2]
                 if t_vis > 1:
                     t_vis = 1
                 joints_3d_vis[ipt, 0] = t_vis
@@ -282,7 +299,7 @@ class COCODataset(JointsDataset):
         _kpts = []
         for idx, kpt in enumerate(preds):
             _kpts.append({
-                'keypoints': kpt,
+                'keypoints': kpt[:19, :],
                 'center': all_boxes[idx][0:2],
                 'scale': all_boxes[idx][2:4],
                 'area': all_boxes[idx][4],
@@ -305,7 +322,7 @@ class COCODataset(JointsDataset):
                 box_score = n_p['score']
                 kpt_score = 0
                 valid_num = 0
-                for n_jt in range(0, num_joints):
+                for n_jt in range(0, num_joints - 4):
                     t_s = n_p['keypoints'][n_jt][2]
                     if t_s > in_vis_thre:
                         kpt_score = kpt_score + t_s
@@ -368,9 +385,9 @@ class COCODataset(JointsDataset):
             _key_points = np.array([img_kpts[k]['keypoints']
                                     for k in range(len(img_kpts))])
             key_points = np.zeros(
-                (_key_points.shape[0], self.num_joints * 3), dtype=np.float)
+                (_key_points.shape[0], (self.num_joints - 4) * 3), dtype=np.float)
 
-            for ipt in range(self.num_joints):
+            for ipt in range(self.num_joints - 4):
                 key_points[:, ipt * 3 + 0] = _key_points[:, ipt, 0]
                 key_points[:, ipt * 3 + 1] = _key_points[:, ipt, 1]
                 key_points[:, ipt * 3 + 2] = _key_points[:, ipt, 2]  # keypoints score.

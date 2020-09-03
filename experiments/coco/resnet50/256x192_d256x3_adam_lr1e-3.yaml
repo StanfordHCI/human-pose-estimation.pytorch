@@ -1,4 +1,4 @@
-GPUS: '0'
+GPUS: '0,1,2,3'
 DATA_DIR: ''
 OUTPUT_DIR: 'output'
 LOG_DIR: 'log'
@@ -8,8 +8,8 @@ PRINT_FREQ: 100
 DATASET:
   DATASET: 'coco'
   ROOT: 'data/coco/'
-  TEST_SET: 'val2017'
-  TRAIN_SET: 'train2017'
+  TEST_SET: 'val_v1.0'
+  TRAIN_SET: 'train_v1.0'
   FLIP: true
   ROT_FACTOR: 40
   SCALE_FACTOR: 0.3

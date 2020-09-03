@@ -8,8 +8,8 @@ PRINT_FREQ: 100
 DATASET:
   DATASET: 'coco'
   ROOT: 'data/coco/'
-  TEST_SET: 'val2017'
-  TRAIN_SET: 'train2017'
+  TEST_SET: 'val_v1.0'
+  TRAIN_SET: 'train_v1.0'
   FLIP: true
   ROT_FACTOR: 40
   SCALE_FACTOR: 0.3
@@ -19,7 +19,7 @@ MODEL:
   IMAGE_SIZE:
   - 288
   - 384
-  NUM_JOINTS: 17
+  NUM_JOINTS: 21
   EXTRA:
     TARGET_TYPE: 'gaussian'
     HEATMAP_SIZE:
